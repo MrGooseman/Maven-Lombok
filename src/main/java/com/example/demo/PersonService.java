@@ -1,73 +1,90 @@
 package com.example.demo;
 
-import java.io.Console;
-import java.lang.ref.WeakReference;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
-public class PersonService
-{
-    public static Collection<Person> listOfPersons;
-    PersonService()
-    {
-        listOfPersons = new LinkedList<>();
-        listOfPersons.add(new Person(1L, "Oleg", 21, "olol@gmail.ru", "Moscow", LocalDateTime.now()));
-        listOfPersons.add(new Person(2L, "Gleb", 21, "gleb@gmail.ru", "Rom", LocalDateTime.now()));
-        listOfPersons.add(new Person(3L, "Olga", 21, "olga@gmail.ru", "Saransk", LocalDateTime.now()));
-        listOfPersons.add(new Person(4L, "Roma", 21, "roma@gmail.ru", "Moscow", LocalDateTime.now()));
-        listOfPersons.add(new Person(5L, "Chrome", 21, "chrome@gmail.ru", "Krasnodar", LocalDateTime.now()));
+@Service
+public class PersonService {
+    private static PersonRepository personRepository;
+
+    @Autowired
+    public PersonService(PersonRepository personRepository) {
+        this.personRepository = personRepository;
+        // Инициализация тестовых данных (можно удалить в продакшене)
+        initializeTestData();
     }
-    public static void create(String _usn, int _age, String _email, String _cty)
-    {
-        PersonService.listOfPersons.add(new Person((long) PersonService.listOfPersons.size(),_usn, _age, _email, _cty, LocalDateTime.now()));
+
+    private static void initializeTestData() {
+        if (personRepository.count() == 0) {
+            personRepository.saveAll(List.of(
+                    new PersonEntity( "Oleg", 21, "olol@gmail.ru", "Moscow", LocalDateTime.now()),
+                    new PersonEntity( "Gleb", 21, "gleb@gmail.ru", "Rom", LocalDateTime.now()),
+                    new PersonEntity( "Olga", 21, "olga@gmail.ru", "Saransk", LocalDateTime.now()),
+                    new PersonEntity( "Roma", 21, "roma@gmail.ru", "Moscow", LocalDateTime.now()),
+                    new PersonEntity( "Chrome", 21, "chrome@gmail.ru", "Krasnodar", LocalDateTime.now())
+            ));
+        }
     }
-    public static Person find(Long _id)
+
+    public static List<PersonEntity> getAllPersons()
     {
-        return listOfPersons.stream().filter(p-> Objects.equals(p.getId(), _id)).findFirst().get();
+        return personRepository.findAll();
     }
-    public static boolean update(Long _id, Person person)
-    {
-        try
-        {
-            listOfPersons.stream().filter(p-> Objects.equals(p.getId(), _id)).findFirst().get().setAge(person.getAge());
-            listOfPersons.stream().filter(p-> Objects.equals(p.getId(), _id)).findFirst().get().setCity(person.getCity());
-            listOfPersons.stream().filter(p-> Objects.equals(p.getId(), _id)).findFirst().get().setEmail(person.getEmail());
-            listOfPersons.stream().filter(p-> Objects.equals(p.getId(), _id)).findFirst().get().setUserName(person.getUserName());
-            listOfPersons.stream().filter(p-> Objects.equals(p.getId(), _id)).findFirst().get().setRegistrationDateTime(person.getRegistrationDateTime());
+
+    public static PersonEntity create(String userName, int age, String email, String city) {
+        PersonEntity person = new PersonEntity();
+        person.setUserName(userName);
+        person.setAge(age);
+        person.setEmail(email);
+        person.setCity(city);
+        person.setRegistrationDateTime(LocalDateTime.now());
+        return personRepository.save(person);
+    }
+
+    public static Optional<PersonEntity> find(Long id) {
+        return personRepository.findById(id);
+    }
+
+    public static boolean update(Long id, PersonEntity personDetails) {
+        Optional<PersonEntity> optionalPerson = personRepository.findById(id);
+        if (optionalPerson.isPresent()) {
+            PersonEntity person = optionalPerson.get();
+            person.setAge(personDetails.getAge());
+            person.setCity(personDetails.getCity());
+            person.setEmail(personDetails.getEmail());
+            person.setUserName(personDetails.getUserName());
+            person.setRegistrationDateTime(personDetails.getRegistrationDateTime());
+            personRepository.save(person);
             return true;
         }
-        catch (Exception ex)
-        {
-            return false;
-        }
+        return false;
     }
-    public static boolean delete(Long _id)
-    {
-        try
-        {
-            listOfPersons.remove(listOfPersons.stream().filter(p-> Objects.equals(p.getId(), _id)).findFirst().get());
+
+    public static boolean delete(Long id) {
+        if (personRepository.existsById(id)) {
+            personRepository.deleteById(id);
             return true;
         }
-        catch (Exception ex)
-        {
-            return false;
-        }
+        return false;
     }
-    public static Collection<Person> get(String _city)
-    {
-        return listOfPersons.stream().filter(p->p.getCity().equalsIgnoreCase(_city)).toList();
+
+    public static List<PersonEntity> getByCity(String city) {
+        return personRepository.findByCityIgnoreCase(city);
     }
-    public static Collection<Person> get(int _age)
-    {
-        return listOfPersons.stream().filter(p->p.getAge()>=_age).toList();
+
+    public static List<PersonEntity> getByAgeGreaterThanEqual(int age) {
+        return personRepository.findByAgeGreaterThanEqual(age);
     }
-    public static Person get()
-    {
-        listOfPersons.stream().sorted(Comparator.comparing(Person::getRegistrationDateTime).reversed());
-        return listOfPersons.stream().findFirst().get();
+
+    public static Optional<PersonEntity> getLatestRegistered() {
+        return personRepository.findTopByOrderByRegistrationDateTimeDesc();
     }
-    public static Collection<Person> getNames(String _name)
-    {
-        return listOfPersons.stream().filter(p->p.getUserName().toLowerCase().contains(_name)).toList();
+
+    public static List<PersonEntity> getByUserNameContaining(String name) {
+        return personRepository.findByUserNameContainingIgnoreCase(name);
     }
 }

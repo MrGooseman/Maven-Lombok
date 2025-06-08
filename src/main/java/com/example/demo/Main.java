@@ -8,7 +8,6 @@ public class Main
 {
     public static void main(String[] args)
     {
-        PersonService ps = new PersonService();
         SpringApplication.run(Main.class, args);
     }
 }
